@@ -18,6 +18,24 @@ const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology:
 
 
 
+async function run(){
+
+    const serviceCollection = client.db('globeRouteTravels').collection('services')
+
+
+
+    // create services 
+    app.post('/services', async(req, res)=>{
+        const addServices = req.body
+        // console.log(addServices);
+        const result = await serviceCollection.insertOne(addServices)
+        res.send(result)
+    })
+
+
+}
+run().catch(err => console.log(e))
+
 
 
 app.get('/', (req, res)=>{
