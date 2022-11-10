@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const jwt = require('jsonwebtoken')
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config()
 const app = express()
@@ -17,11 +18,36 @@ const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@clu
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
 
 
+function verifyJWT(req, res, next){
+    const authHeader = req.headers.authorization
+    if(!authHeader){
+        return res.status(401).send({message: 'unauthorized access'})
+
+    }
+    const token = authHeader.split(' ')[1]
+
+    jwt.verify(token, process.env.ACCESS_TOKEN_SECTET, function(err, decoded){
+        if(err){
+            return res.status(403).send({message: 'forbidden'})
+        }
+        req.decoded =decoded
+        next()
+    })
+}
+
 
 async function run(){
 
     const serviceCollection = client.db('globeRouteTravels').collection('services')
     const reviewCollection = client.db('globeRouteTravels').collection('reviews')
+
+
+    app.post('/jwt', (req, res)=>{
+        const user = req.body
+        // console.log(user);
+        const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECTET, {expiresIn : '1h'} )
+        res.send({token})
+    })
 
 
 
@@ -63,8 +89,13 @@ async function run(){
     })
 
 
-    app.get('/myreviews/:email', async (req, res)=>{
+    app.get('/myreviews/:email', verifyJWT, async (req, res)=>{
+        const decoded = req.decoded
+        // console.log('inside decoded',decoded);
         const email = req.params.email
+        if(decoded.email !== email){
+            res.status(403).send('unauthorized access')
+        }
         // console.log(email);
         const query = {email : email}
         const cursor = reviewCollection.find(query)
@@ -116,7 +147,7 @@ async function run(){
         
         const result = await reviewCollection.updateOne(filter, updatedReview, option)
         res.send(result)
-        console.log(result);
+        // console.log(result);
 
 
 
